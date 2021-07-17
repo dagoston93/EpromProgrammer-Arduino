@@ -52,17 +52,24 @@ void loop() {
       }
       // Read request
       else if(opCode == READ_REQUEST){
-        uint8_t dataSize[4];
-        Serial.readBytes(dataSize, 4);
-        uint32_t numOfBytes = 0;
+        uint8_t initialData[8];
+        Serial.readBytes(initialData, 8);
 
-        numOfBytes |= (uint32_t)dataSize[0] << 24;
-        numOfBytes |= (uint32_t)dataSize[1] << 16;
-        numOfBytes |= (uint32_t)dataSize[2] <<  8;
-        numOfBytes |= (uint32_t)dataSize[3];
+        uint32_t numOfBytes = 0;
+        uint32_t startAddress = 0;
+
+        numOfBytes |= (uint32_t)initialData[0] << 24;
+        numOfBytes |= (uint32_t)initialData[1] << 16;
+        numOfBytes |= (uint32_t)initialData[2] <<  8;
+        numOfBytes |= (uint32_t)initialData[3];
+
+        startAddress |= (uint32_t)initialData[4] << 24;
+        startAddress |= (uint32_t)initialData[5] << 16;
+        startAddress |= (uint32_t)initialData[6] <<  8;
+        startAddress |= (uint32_t)initialData[7];
 
         // Check if requested num of bytes is within bounds
-        if(numOfBytes <= MEM_SIZE){
+        if((startAddress + numOfBytes) <= MEM_SIZE){
           // We are good to go
           Serial.write(OK);
 
@@ -70,7 +77,8 @@ void loop() {
 
           delay(1000);
           // Now read the requested number of bytes
-          for(uint32_t address = 0; address < numOfBytes; address++){
+          uint32_t lastAddress = (startAddress + numOfBytes) - 1;
+          for(uint32_t address = startAddress; address <= lastAddress; address++){
             Eprom_SetAddress(address);
             data = PINB;
             Serial.write(data);
