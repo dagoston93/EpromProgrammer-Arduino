@@ -45,16 +45,21 @@ void loop() {
     Serial.readBytes(&opCode, 1);
 
     if(isPcConnected){
+      // Disconnect request
+      if(opCode == DISCONNECT_REQUEST){
+        Serial.write(OK);
+        isPcConnected = false;
+      }
       // Read request
-      if(opCode == READ_REQUEST){
+      else if(opCode == READ_REQUEST){
         uint8_t dataSize[4];
         Serial.readBytes(dataSize, 4);
         uint32_t numOfBytes = 0;
 
-        numOfBytes |= dataSize[0] << 24;
-        numOfBytes |= dataSize[1] << 16;
-        numOfBytes |= dataSize[2] <<  8;
-        numOfBytes |= dataSize[3];
+        numOfBytes |= (uint32_t)dataSize[0] << 24;
+        numOfBytes |= (uint32_t)dataSize[1] << 16;
+        numOfBytes |= (uint32_t)dataSize[2] <<  8;
+        numOfBytes |= (uint32_t)dataSize[3];
 
         // Check if requested num of bytes is within bounds
         if(numOfBytes <= MEM_SIZE){
@@ -63,6 +68,7 @@ void loop() {
 
           uint8_t data = 0;
 
+          delay(1000);
           // Now read the requested number of bytes
           for(uint32_t address = 0; address < numOfBytes; address++){
             Eprom_SetAddress(address);
