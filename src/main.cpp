@@ -8,7 +8,19 @@ Adafruit_MCP23017 mcp;
 /**
  * At the moment we only support the TMS27C010A-12
  */
-#define EPROM_A16 7
+#define EPROM_A16 30
+#define EPROM_PGM 31
+#define EPROM_CHIP_ENABLE 32
+#define EPROM_OUTPUT_ENABLE 33
+#define EPROM_PIN_30 34
+#define PIN_LED1 35
+#define PIN_LED2 36
+#define PIN_LED3 37
+#define BUZZER_PIN 44
+
+#define ANALOG_SENS1 A15
+#define ANALOG_SENS2 A14
+
 #define MEM_SIZE 131072
 
 /**
@@ -17,6 +29,7 @@ Adafruit_MCP23017 mcp;
 bool isPcConnected = false;
 
 void Eprom_SetAddress(uint32_t address);
+uint16_t ReorderAddress(uint16_t address);
 
 void setup() {
   // Init I2C and Serial communication
@@ -33,8 +46,29 @@ void setup() {
   pinMode(EPROM_A16, OUTPUT);
   digitalWrite(EPROM_A16, LOW);
 
-  // Set all pins of PORTB as inputs
-  DDRB = 0x00;
+  // Set all pins of PORTA as inputs
+  DDRA = 0x00;
+
+  // For now only reading is implemented -> Set the Chip Enable and Output Enable pins low,
+  // PGM to high
+  pinMode(EPROM_CHIP_ENABLE, OUTPUT);
+  pinMode(EPROM_OUTPUT_ENABLE, OUTPUT);
+  pinMode(EPROM_PGM, OUTPUT);
+  pinMode(EPROM_PIN_30, OUTPUT);
+
+  digitalWrite(EPROM_CHIP_ENABLE, LOW);
+  digitalWrite(EPROM_OUTPUT_ENABLE, LOW);
+  digitalWrite(EPROM_PGM, HIGH);
+  digitalWrite(EPROM_PIN_30, LOW);
+
+  // Turn off LEDs
+  pinMode(PIN_LED1, OUTPUT);
+  pinMode(PIN_LED2, OUTPUT);
+  pinMode(PIN_LED3, OUTPUT);
+
+  digitalWrite(PIN_LED1, LOW);
+  digitalWrite(PIN_LED2, LOW);
+  digitalWrite(PIN_LED3, LOW);
 }
 
 void loop() {
@@ -80,7 +114,10 @@ void loop() {
           uint32_t lastAddress = (startAddress + numOfBytes) - 1;
           for(uint32_t address = startAddress; address <= lastAddress; address++){
             Eprom_SetAddress(address);
-            data = PINB;
+            delayMicroseconds(1000);
+
+            data = PINA;
+
             Serial.write(data);
           }
         }else{
@@ -110,6 +147,32 @@ void Eprom_SetAddress(uint32_t address){
   uint8_t addressLastBit = (uint8_t) (address >> 16);
 
   // Set the address bits of the EPROM chip
-  mcp.writeGPIOAB(addressLower16);
   digitalWrite(EPROM_A16, (addressLastBit > 0) ? HIGH : LOW);
+
+  addressLower16 = ReorderAddress(addressLower16);
+
+  mcp.writeGPIOAB(addressLower16);
+}
+
+/**
+ * @brief Reorders the address bits according to schematics. (Bottom 16 bits)
+ * @param address The address to reorder.
+ */
+uint16_t ReorderAddress(uint16_t address){
+
+  uint8_t addrMap[] = {
+    15, 12, 10, 14, 11,  9,  8, 13,
+     7,  6,  5,  4,  3,  2,  1,  0
+  };
+
+  uint16_t reordered = 0;
+
+  for(int i = 0; i < 16; i++){
+    uint16_t mask = 1 << addrMap[i];
+    uint16_t bit = address & mask;
+
+    reordered |= bit;
+  }
+
+  return reordered;
 }
