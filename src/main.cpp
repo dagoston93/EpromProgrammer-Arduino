@@ -161,17 +161,18 @@ void Eprom_SetAddress(uint32_t address){
 uint16_t ReorderAddress(uint16_t address){
 
   uint8_t addrMap[] = {
-    15, 12, 10, 14, 11,  9,  8, 13,
-     7,  6,  5,  4,  3,  2,  1,  0
+    15, 14, 13, 12, 11,  10,  9, 8,
+    6,  5,  2,  4,  1,  7,  3,  0
   };
 
   uint16_t reordered = 0;
 
-  for(int i = 0; i < 16; i++){
-    uint16_t mask = 1 << addrMap[i];
-    uint16_t bit = address & mask;
+  for(uint32_t i = 0; i < 16; i++){
+    uint16_t mask = 1 << i;
+    uint16_t bit = (address & mask) >> i;
+    uint16_t newBit = bit << addrMap[i];
 
-    reordered |= bit;
+    reordered |= newBit;
   }
 
   return reordered;
