@@ -84,6 +84,45 @@ void loop() {
         Serial.write(OK);
         isPcConnected = false;
       }
+      // Write request
+      else if(opCode == WRITE_REQUEST){
+        // 0. Set up CHIP_ENABLE and OUTPUT_ENABLE pins
+
+        // 1. Check VCC voltage
+          //TODO: implement
+
+        // 2. Check VPP voltage
+          //TODO: implement
+
+        // 3. Voltages are correct, send OK message (PC will prompt user to insert chip)
+
+        // 4. Read how many bytes the PC wants to write, and the start address
+
+        // 5. Check if request fits to the chip, if not send DATA_SIZE_ERROR, otherwise OK
+
+        // 6. Use a loop to read and write the requested number of bytes to chip
+            // 6.1 Set address
+
+            // 6.2 Set data
+
+            // 6.3 pulse PGM pin: 100 microseconds
+
+        // 7. Send OK -> PC will re-send the bytes
+
+        // 8. Use a loop to read the bytes again
+          // 8.1 With a loop verify byte. If not correct, try to re-program it
+          // max attempts: 10. If 10th attempt fails-> device failed
+
+        // 9. Send OK -> PC will prompt user to set 5V on VPP, VCC pins
+
+        // 10. When voltages correct, send OK message. PC will re-send the bytes
+
+        // 11. Use a loop to read and check the bytes. If any of the doesn't match, device failded.
+
+        // 12. If dvice passed, send OK message.
+
+
+      }
       // Read request
       else if(opCode == READ_REQUEST){
         uint8_t initialData[8];
