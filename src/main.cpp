@@ -49,15 +49,14 @@ void setup() {
   // Set all pins of PORTA as inputs
   DDRA = 0x00;
 
-  // For now only reading is implemented -> Set the Chip Enable and Output Enable pins low,
   // PGM to high
   pinMode(EPROM_CHIP_ENABLE, OUTPUT);
   pinMode(EPROM_OUTPUT_ENABLE, OUTPUT);
   pinMode(EPROM_PGM, OUTPUT);
   pinMode(EPROM_PIN_30, OUTPUT);
 
-  digitalWrite(EPROM_CHIP_ENABLE, LOW);
-  digitalWrite(EPROM_OUTPUT_ENABLE, LOW);
+  digitalWrite(EPROM_CHIP_ENABLE, HIGH);
+  digitalWrite(EPROM_OUTPUT_ENABLE, HIGH);
   digitalWrite(EPROM_PGM, HIGH);
   digitalWrite(EPROM_PIN_30, LOW);
 
@@ -148,7 +147,12 @@ void loop() {
 
           uint8_t data = 0;
 
+          // Enable the chip and the output
+          digitalWrite(EPROM_CHIP_ENABLE, LOW);
+          digitalWrite(EPROM_OUTPUT_ENABLE, LOW);
+
           delay(1000);
+
           // Now read the requested number of bytes
           uint32_t lastAddress = (startAddress + numOfBytes) - 1;
           for(uint32_t address = startAddress; address <= lastAddress; address++){
@@ -159,6 +163,11 @@ void loop() {
 
             Serial.write(data);
           }
+
+          // Disable the chip and the output
+          digitalWrite(EPROM_CHIP_ENABLE, HIGH);
+          digitalWrite(EPROM_OUTPUT_ENABLE, HIGH);
+          
         }else{
           // Requested data too long, send error
           Serial.write(DATA_SIZE_ERROR);
