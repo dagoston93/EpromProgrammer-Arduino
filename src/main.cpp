@@ -23,6 +23,9 @@ Adafruit_MCP23017 mcp;
 
 #define MEM_SIZE 131072
 
+#define PGM_PULSE_MICROS 100
+#define MAX_PROG_ATTEMPTS 10
+
 /**
  * Global variables
  */
@@ -31,6 +34,7 @@ bool isPcConnected = false;
 void Eprom_SetAddress(uint32_t address);
 uint16_t ReorderAddress(uint16_t address);
 uint32_t Serial_ReadUint32();
+void SendProgrammingPulse();
 
 void setup() {
   // Init I2C and Serial communication
@@ -86,8 +90,6 @@ void loop() {
       }
       // Write request
       else if(opCode == WRITE_REQUEST){
-        // 0. Set up CHIP_ENABLE and OUTPUT_ENABLE pins
-
         // 1. Check VCC voltage
           //TODO: implement
 
@@ -98,31 +100,73 @@ void loop() {
         Serial.write(OK);
 
         // 4. Read how many bytes the PC wants to write, and the start address
+        uint32_t numOfBytes = Serial_ReadUint32();
+        uint32_t startAddress = Serial_ReadUint32();
 
-        // 5. Check if request fits to the chip, if not send DATA_SIZE_ERROR, otherwise OK
+        // 5. If request fits to the chip send OK, otherwise send DATA_SIZE_ERROR
+        if((startAddress + numOfBytes) <= MEM_SIZE){
+          // We are good to go
+          Serial.write(OK);
 
-        // 6. Use a loop to read and write the requested number of bytes to chip
+          uint8_t data = 0;
+
+          // Set up CHIP_ENABLE and OUTPUT_ENABLE pins
+          digitalWrite(EPROM_CHIP_ENABLE, LOW);
+          digitalWrite(EPROM_OUTPUT_ENABLE, HIGH);
+
+          // Set all pins of PORTA as outputs
+          DDRA = 0xFF;
+
+          uint32_t lastAddress = (startAddress + numOfBytes) - 1;
+          // 6. Use a loop to read and write the requested number of bytes to chip
+          for(uint32_t address = startAddress; address <= lastAddress; address++){
             // 6.1 Set address
+            Eprom_SetAddress(address);
 
-            // 6.2 Set data
+            // 6.2 Read data from serial
+            Serial.readBytes(&data, 1);
 
-            // 6.3 pulse PGM pin: 100 microseconds
+            // 6.3 Set data
+            PORTA = data;
 
-        // 7. Send OK -> PC will re-send the bytes
+            // 6.4 pulse PGM pin: 100 microseconds
+            SendProgrammingPulse();
+          }
+          // 7. Send OK -> PC will re-send the bytes
+          Serial.write(OK);
 
-        // 8. Use a loop to read the bytes again
-          // 8.1 With a loop verify byte. If not correct, try to re-program it
-          // max attempts: 10. If 10th attempt fails-> device failed
+          // 8. Use a loop to read the bytes again
+            // 8.1 With a loop verify byte. If not correct, try to re-program it
+            // max attempts: 10. If 10th attempt fails-> device failed
+          bool deviceFailed = false;
+          uint8_t errorCounter = 0;
 
-        // 9. Send OK -> PC will prompt user to set 5V on VPP, VCC pins
+          // TODO: SET EPROM pins according to datasheet
+          for(uint32_t address = startAddress; address <= lastAddress; address++){
+            errorCounter = 0;
+            Eprom_SetAddress(address);
+            Serial.readBytes(&data, 1);
 
-        // 10. When voltages correct, send OK message. PC will re-send the bytes
+            if(data != PINA){
 
-        // 11. Use a loop to read and check the bytes. If any of the doesn't match, device failded.
-
-        // 12. If dvice passed, send OK message.
+            }
 
 
+          }
+
+          // 9. Send OK -> PC will prompt user to set 5V on VPP, VCC pins
+          Serial.write(OK);
+
+          // 10. When voltages correct, send OK message. PC will re-send the bytes
+            //Todo: Implement
+
+          // 11. Use a loop to read and check the bytes. If any of the doesn't match, device failded.
+
+          // 12. If dvice passed, send OK message.
+        }else{
+          // Requested data too long, send error
+          Serial.write(DATA_SIZE_ERROR);
+        }
       }
       // Read request
       else if(opCode == READ_REQUEST){
@@ -140,6 +184,9 @@ void loop() {
           // Enable the chip and the output
           digitalWrite(EPROM_CHIP_ENABLE, LOW);
           digitalWrite(EPROM_OUTPUT_ENABLE, LOW);
+
+          // Set all pins of PORTA as inputs
+          DDRA = 0x00;
 
           delay(1000);
 
@@ -231,4 +278,10 @@ uint32_t Serial_ReadUint32(){
   retVal |= (uint32_t)data[3];
 
   return retVal;
+}
+
+void SendProgrammingPulse(){
+  digitalWrite(EPROM_PGM, LOW);
+  delayMicroseconds(PGM_PULSE_MICROS);
+  digitalWrite(EPROM_PGM, HIGH);
 }
