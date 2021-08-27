@@ -30,6 +30,7 @@ bool isPcConnected = false;
 
 void Eprom_SetAddress(uint32_t address);
 uint16_t ReorderAddress(uint16_t address);
+uint32_t Serial_ReadUint32();
 
 void setup() {
   // Init I2C and Serial communication
@@ -94,6 +95,7 @@ void loop() {
           //TODO: implement
 
         // 3. Voltages are correct, send OK message (PC will prompt user to insert chip)
+        Serial.write(OK);
 
         // 4. Read how many bytes the PC wants to write, and the start address
 
@@ -124,21 +126,9 @@ void loop() {
       }
       // Read request
       else if(opCode == READ_REQUEST){
-        uint8_t initialData[8];
-        Serial.readBytes(initialData, 8);
 
-        uint32_t numOfBytes = 0;
-        uint32_t startAddress = 0;
-
-        numOfBytes |= (uint32_t)initialData[0] << 24;
-        numOfBytes |= (uint32_t)initialData[1] << 16;
-        numOfBytes |= (uint32_t)initialData[2] <<  8;
-        numOfBytes |= (uint32_t)initialData[3];
-
-        startAddress |= (uint32_t)initialData[4] << 24;
-        startAddress |= (uint32_t)initialData[5] << 16;
-        startAddress |= (uint32_t)initialData[6] <<  8;
-        startAddress |= (uint32_t)initialData[7];
+        uint32_t numOfBytes = Serial_ReadUint32();
+        uint32_t startAddress = Serial_ReadUint32();
 
         // Check if requested num of bytes is within bounds
         if((startAddress + numOfBytes) <= MEM_SIZE){
@@ -167,7 +157,7 @@ void loop() {
           // Disable the chip and the output
           digitalWrite(EPROM_CHIP_ENABLE, HIGH);
           digitalWrite(EPROM_OUTPUT_ENABLE, HIGH);
-          
+
         }else{
           // Requested data too long, send error
           Serial.write(DATA_SIZE_ERROR);
@@ -224,4 +214,21 @@ uint16_t ReorderAddress(uint16_t address){
   }
 
   return reordered;
+}
+
+/**
+ * Reads an uint32 from the serial port and returns it.
+ */
+uint32_t Serial_ReadUint32(){
+  uint8_t data[4];
+  Serial.readBytes(data, 4);
+
+  uint32_t retVal = 0;
+
+  retVal |= (uint32_t)data[0] << 24;
+  retVal |= (uint32_t)data[1] << 16;
+  retVal |= (uint32_t)data[2] <<  8;
+  retVal |= (uint32_t)data[3];
+
+  return retVal;
 }
