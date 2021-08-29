@@ -40,6 +40,7 @@ void setup() {
   // Init I2C and Serial communication
   mcp.begin();
   Serial.begin(500000);
+  Serial.setTimeout(60000); // LATER DELETE -> ONLY TEST
 
   // Set all the pins of the MCP23017 to OUTPUT (theese are the address pins 0-15)
   for(uint8_t i = 0; i<16; i++){
@@ -90,14 +91,17 @@ void loop() {
       }
       // Write request
       else if(opCode == WRITE_REQUEST){
+
+        // TODO: REORGANIZE: check after data size check -> response shall be INCORRECT_VCC or VPP
+        // istead of OK if voltages not correct
         // 1. Check VCC voltage
           //TODO: implement
 
         // 2. Check VPP voltage
           //TODO: implement
 
-        // 3. Voltages are correct, send OK message (PC will prompt user to insert chip)
-        Serial.write(OK);
+        /*// 3. Voltages are correct, send OK message (PC will prompt user to insert chip)
+        //Serial.write(OK);*/ // Unnecessary
 
         // 4. Read how many bytes the PC wants to write, and the start address
         uint32_t numOfBytes = Serial_ReadUint32();
@@ -319,7 +323,6 @@ uint16_t ReorderAddress(uint16_t address){
  */
 uint32_t Serial_ReadUint32(){
   uint8_t data[4];
-  Serial.setTimeout(60000); // LATER DELETE -> ONLY TEST
   Serial.readBytes(data, 4);
 
   uint32_t retVal = 0;
