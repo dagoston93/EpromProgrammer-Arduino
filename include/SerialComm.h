@@ -10,3 +10,4 @@
 #define DATA_SIZE_ERROR       0x01
 #define INCORRECT_VCC         0x02
 #define INCORRECT_VPP         0x03
+#define DEVICE_FAILED         0x04

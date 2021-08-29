@@ -141,28 +141,79 @@ void loop() {
           bool deviceFailed = false;
           uint8_t errorCounter = 0;
 
-          // TODO: SET EPROM pins according to datasheet
+          // Set all pins of PORTA as inputs, enable EPROM output
+          DDRA = 0x00;
+          digitalWrite(EPROM_OUTPUT_ENABLE, LOW);
+
           for(uint32_t address = startAddress; address <= lastAddress; address++){
             errorCounter = 0;
             Eprom_SetAddress(address);
             Serial.readBytes(&data, 1);
 
-            if(data != PINA){
+            while(data != PINA){
+              errorCounter++;
+              if(errorCounter == 10){
+                // Device failed, exit while loop
+                deviceFailed = true;
+                break;
+              }
 
+              // Set all pins of PORTA as outputs, disable EPROM output
+              DDRA = 0xFF;
+              digitalWrite(EPROM_OUTPUT_ENABLE, HIGH);
+
+              PORTA = data;
+              SendProgrammingPulse();
+
+              // Set all pins of PORTA as inputs, enable EPROM output
+              DDRA = 0x00;
+              digitalWrite(EPROM_OUTPUT_ENABLE, LOW);
             }
 
-
+            if(deviceFailed){
+              // Device failed in while loop, exit the for loop
+              //break; // DELETE!!! if u exit PC doesn't know, still sends data
+            }
           }
 
-          // 9. Send OK -> PC will prompt user to set 5V on VPP, VCC pins
-          Serial.write(OK);
+          // Check if device has failed or not
+          if(deviceFailed){
+            Serial.write(DEVICE_FAILED);
+          }else{
+            // 9. Send OK -> PC will prompt user to set 5V on VPP, VCC pins
+            Serial.write(OK);
 
-          // 10. When voltages correct, send OK message. PC will re-send the bytes
-            //Todo: Implement
+            // 10. When voltages correct, send OK message. PC will re-send the bytes
+              //Todo: Implement
 
-          // 11. Use a loop to read and check the bytes. If any of the doesn't match, device failded.
+            // Set all pins of PORTA as inputs, enable EPROM output
+            DDRA = 0x00;
+            digitalWrite(EPROM_OUTPUT_ENABLE, LOW);
 
-          // 12. If dvice passed, send OK message.
+            // 11. Use a loop to read and check the bytes. If any of them doesn't match, device failded.
+            for(uint32_t address = startAddress; address <= lastAddress; address++){
+              // Set address
+              Eprom_SetAddress(address);
+
+              // Read data from serial
+              Serial.readBytes(&data, 1);
+
+              if(data != PINA){
+                deviceFailed = true;
+                break;
+              }
+            }
+
+            // 12. If device passed, send OK message.
+            if(deviceFailed){
+              Serial.write(DEVICE_FAILED);
+            }else{
+              Serial.write(OK);
+            }
+          }
+          // Disable EPROM, and turn off output
+          digitalWrite(EPROM_CHIP_ENABLE, HIGH);
+          digitalWrite(EPROM_OUTPUT_ENABLE, HIGH);
         }else{
           // Requested data too long, send error
           Serial.write(DATA_SIZE_ERROR);
@@ -268,6 +319,7 @@ uint16_t ReorderAddress(uint16_t address){
  */
 uint32_t Serial_ReadUint32(){
   uint8_t data[4];
+  Serial.setTimeout(60000); // LATER DELETE -> ONLY TEST
   Serial.readBytes(data, 4);
 
   uint32_t retVal = 0;
