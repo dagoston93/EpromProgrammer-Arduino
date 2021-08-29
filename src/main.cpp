@@ -71,7 +71,7 @@ void setup() {
   pinMode(PIN_LED2, OUTPUT);
   pinMode(PIN_LED3, OUTPUT);
 
-  digitalWrite(PIN_LED1, LOW);
+  digitalWrite(PIN_LED1, HIGH);
   digitalWrite(PIN_LED2, LOW);
   digitalWrite(PIN_LED3, LOW);
 }
@@ -91,7 +91,7 @@ void loop() {
       }
       // Write request
       else if(opCode == WRITE_REQUEST){
-
+        digitalWrite(PIN_LED2, HIGH);
         // TODO: REORGANIZE: check after data size check -> response shall be INCORRECT_VCC or VPP
         // istead of OK if voltages not correct
         // 1. Check VCC voltage
@@ -222,6 +222,8 @@ void loop() {
           // Requested data too long, send error
           Serial.write(DATA_SIZE_ERROR);
         }
+
+        digitalWrite(PIN_LED2, LOW);
       }
       // Read request
       else if(opCode == READ_REQUEST){
